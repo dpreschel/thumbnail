@@ -22,16 +22,20 @@ button:disabled { opacity: .6; cursor: progress; }
 #status.warn { color: var(--warn); }
 .pickers { display: flex; gap: 16px; flex-wrap: wrap; }
 .size-picker { color: var(--muted); font-size: .9rem; display: flex; align-items: center; gap: 8px; }
+.size-picker[hidden] { display: none; }
 select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--card); color: var(--text); }
 #status.error { color: var(--danger); } #status.ok { color: var(--ok); } #status.busy { color: var(--muted); }
-/* align-items: start so an expanded card grows on its own instead of stretching its row */
-#sites { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px; align-items: start;
+#sites { list-style: none; padding: 0; margin: 0; display: grid; gap: 16px;
          grid-template-columns: repeat(auto-fill, minmax(var(--col, 300px), 1fr)); }
 #sites[data-size="small"] { --col: 220px; }
 #sites[data-size="large"] { --col: min(100%, 520px); }
-.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+/* Grid: every row as tall as the tallest card. Masonry: tiny rows; app.js sets each card's row span. */
+#sites[data-layout="grid"] { grid-auto-rows: 1fr; }
+#sites[data-layout="masonry"] { grid-auto-rows: 4px; row-gap: 0; align-items: start; }
+.card { position: relative; background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; }
+.card.popped { z-index: 2; }
 .thumb { display: block; width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top; border-bottom: 1px solid var(--border); }
-.thumb-link { display: block; text-decoration: none; }
+.thumb-link { display: block; text-decoration: none; border-radius: 11px 11px 0 0; overflow: hidden; }
 .placeholder { width: 100%; aspect-ratio: 16 / 10; display: flex; flex-direction: column; align-items: center; justify-content: center;
                gap: 4px; color: var(--muted); font-size: .85rem; border-bottom: 1px solid var(--border);
                background: repeating-linear-gradient(45deg, transparent 0 10px, color-mix(in srgb, var(--border) 50%, transparent) 10px 20px); }
@@ -39,14 +43,20 @@ select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid 
 .initial { font-size: 3rem; font-weight: 700; line-height: 1; color: var(--accent); }
 .badge { align-self: flex-start; font-size: .72rem; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--warn); color: var(--warn); cursor: help; }
 .badge[hidden] { display: none; }
-.body { padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.body { position: relative; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; flex: 1; }
 .title { font-size: 1.05rem; margin: 0; }
 .site-name:empty { display: none; }
 .site-name, .muted, .when { color: var(--muted); font-size: .85rem; margin: 0; }
 .desc { margin: 4px 0; font-size: .92rem; }
 .desc.collapsed { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
-.desc-toggle { align-self: flex-start; margin: -2px 0 2px; padding: 0; background: none; color: var(--accent); font-size: .85rem; }
-.desc-toggle:hover { text-decoration: underline; }
+.desc-toggle, .pop-close { align-self: flex-start; margin: -2px 0 2px; padding: 0; background: none; color: var(--accent); font-size: .85rem; }
+.desc-toggle:hover, .pop-close:hover { text-decoration: underline; }
+/* Left/top offsets + padding + border line the pop-over text up exactly with the clamped text under it. */
+.desc-pop { position: absolute; left: 5px; right: 5px; padding: 8px; display: flex; flex-direction: column; gap: 4px;
+            background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+            box-shadow: 0 10px 28px rgb(0 0 0 / .18), 0 2px 6px rgb(0 0 0 / .08); }
+.desc-pop[hidden] { display: none; }
+.desc-full { margin: 0; font-size: .92rem; }
 .url { color: var(--accent); font-size: .85rem; word-break: break-all; }
 .meta { margin-top: auto; padding-top: 8px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
 .actions { display: flex; gap: 6px; flex-shrink: 0; }
