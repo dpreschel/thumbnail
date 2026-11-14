@@ -7,9 +7,11 @@ const statusEl = $('#status');
 const list = $('#sites');
 const tpl = $('#card-tpl');
 const sizeSelect = $('#size');
+const descDefaultSelect = $('#desc-default');
 
 let sites = [];
 let sizes = {}; // { small: 320, ... } from the server
+const descOverrides = new Map(); // site id -> expanded?, for cards toggled away from the default
 
 const prefs = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -64,8 +66,18 @@ function renderCard(site) {
     badge.title = `The browser could not render this page, so only basic info was fetched.\n${site.fallbackReason || ''}`;
   }
   $('.site-name', node).textContent = site.siteName || '';
-  $('.desc', node).textContent = site.description || 'No description provided.';
-  $('.desc', node).classList.toggle('muted', !site.description);
+  const desc = $('.desc', node);
+  desc.textContent = site.description || 'No description provided.';
+  desc.classList.toggle('muted', !site.description);
+  desc.id = `desc-${site.id}`;
+  const toggle = $('.desc-toggle', node);
+  toggle.setAttribute('aria-controls', desc.id);
+  setExpanded(node, descOverrides.get(site.id) ?? descDefaultSelect.value === 'expanded');
+  toggle.addEventListener('click', () => {
+    const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+    descOverrides.set(site.id, expanded);
+    setExpanded(node, expanded);
+  });
   const link = $('.url', node);
   link.href = site.url;
   link.textContent = site.url;
@@ -84,11 +96,37 @@ function renderCard(site) {
   return node;
 }
 
+function setExpanded(card, expanded) {
+  $('.desc', card).classList.toggle('collapsed', !expanded);
+  const toggle = $('.desc-toggle', card);
+  toggle.setAttribute('aria-expanded', String(expanded));
+  toggle.textContent = expanded ? 'Show less' : 'Show more';
+}
+
+/** Only offer the toggle where the collapsed description would actually be cut off. */
+function updateToggles() {
+  for (const card of list.children) {
+    const desc = $('.desc', card);
+    const wasCollapsed = desc.classList.contains('collapsed');
+    desc.classList.add('collapsed');
+    const clipped = desc.scrollHeight > desc.clientHeight + 1;
+    desc.classList.toggle('collapsed', wasCollapsed);
+    $('.desc-toggle', card).hidden = !clipped;
+  }
+}
+
 function render() {
   list.dataset.size = sizeSelect.value;
   list.replaceChildren(...sites.map(renderCard));
   $('#empty').hidden = sites.length > 0;
+  updateToggles();
 }
+
+let resizeFrame = 0;
+window.addEventListener('resize', () => {
+  cancelAnimationFrame(resizeFrame);
+  resizeFrame = requestAnimationFrame(updateToggles);
+});
 
 async function refresh() {
   sites = await api('GET', '/api/sites');
@@ -121,7 +159,14 @@ sizeSelect.addEventListener('change', () => {
   render();
 });
 
+descDefaultSelect.addEventListener('change', () => {
+  prefs.set('descDefault', descDefaultSelect.value);
+  descOverrides.clear(); // a new default applies to every card
+  render();
+});
+
 async function init() {
+  if (prefs.get('descDefault') === 'expanded') descDefaultSelect.value = 'expanded';
   ({ thumbnailSizes: sizes } = await api('GET', '/api/config'));
   const names = Object.keys(sizes).sort((a, b) => sizes[a] - sizes[b]);
   sizeSelect.replaceChildren(
