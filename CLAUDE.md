@@ -6,7 +6,9 @@ Context for Claude Code sessions in this repo.
 
 **Site Thumbnailer**: a proof of concept for a larger project. A user enters a URL. The app records the page's title, description and canonical URL, and saves a screenshot thumbnail in several sizes. There is deliberately no database.
 
-Status: v0.2 is working. It has browser capture, a metadata-only fallback, configurable thumbnail sizes, Docker and CI. `main` is the primary branch; use feature branches + PRs for new work.
+Status: v0.2 is working. It has browser capture, a metadata-only fallback, configurable thumbnail sizes, Docker and CI. `main` is the primary branch.
+
+**Branches and PRs (solo project):** do new work on a feature branch. For small, low-risk changes (UI tweaks, docs, small fixes), merge the branch straight into `main` when the owner asks. For bigger or riskier changes (capture, the SSRF guard, dependencies, Docker), suggest a PR so CI and a code review run before `main`. Suggest a PR whenever it would clearly help, and let the owner decide.
 
 ## Commands
 
