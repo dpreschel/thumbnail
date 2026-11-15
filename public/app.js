@@ -7,9 +7,24 @@ const statusEl = $('#status');
 const list = $('#sites');
 const tpl = $('#card-tpl');
 const sizeSelect = $('#size');
+const descDefaultSelect = $('#desc-default');
+const layoutSelect = $('#layout');
 
 let sites = [];
 let sizes = {}; // { small: 320, ... } from the server
+const descOverrides = new Map(); // site id -> expanded?, for cards toggled away from the default (masonry)
+let poppedCard = null; // grid layout: the card whose description pop-over is open
+const isMasonry = () => layoutSelect.value === 'masonry';
+
+// Masonry: the grid has 4px rows and each card spans enough of them to fit its height plus the gap.
+const MASONRY_ROW = 4;
+const MASONRY_GAP = 16;
+const masonryObserver = new ResizeObserver((entries) => {
+  for (const { target } of entries) {
+    const rows = Math.ceil((target.getBoundingClientRect().height + MASONRY_GAP) / MASONRY_ROW);
+    target.style.gridRowEnd = `span ${rows}`;
+  }
+});
 
 const prefs = {
   get: (k) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -64,8 +79,28 @@ function renderCard(site) {
     badge.title = `The browser could not render this page, so only basic info was fetched.\n${site.fallbackReason || ''}`;
   }
   $('.site-name', node).textContent = site.siteName || '';
-  $('.desc', node).textContent = site.description || 'No description provided.';
-  $('.desc', node).classList.toggle('muted', !site.description);
+  const desc = $('.desc', node);
+  desc.textContent = site.description || 'No description provided.';
+  desc.classList.toggle('muted', !site.description);
+  desc.id = `desc-${site.id}`;
+  const toggle = $('.desc-toggle', node);
+  const pop = $('.desc-pop', node);
+  pop.id = `desc-pop-${site.id}`;
+  $('.desc-full', pop).textContent = desc.textContent;
+  $('.pop-close', pop).addEventListener('click', closePopover);
+  if (isMasonry()) {
+    toggle.setAttribute('aria-controls', desc.id);
+    setExpanded(node, descOverrides.get(site.id) ?? descDefaultSelect.value === 'expanded');
+  } else {
+    toggle.setAttribute('aria-controls', pop.id);
+    setExpanded(node, false);
+  }
+  toggle.addEventListener('click', () => {
+    if (!isMasonry()) return openPopover(node);
+    const expanded = toggle.getAttribute('aria-expanded') !== 'true';
+    descOverrides.set(site.id, expanded);
+    setExpanded(node, expanded);
+  });
   const link = $('.url', node);
   link.href = site.url;
   link.textContent = site.url;
@@ -84,11 +119,77 @@ function renderCard(site) {
   return node;
 }
 
+function setExpanded(card, expanded) {
+  $('.desc', card).classList.toggle('collapsed', !expanded);
+  const toggle = $('.desc-toggle', card);
+  toggle.setAttribute('aria-expanded', String(expanded));
+  toggle.textContent = expanded ? 'Show less' : 'Show more';
+}
+
+/** Only offer the toggle where the collapsed description would actually be cut off. */
+function updateToggles() {
+  for (const card of list.children) {
+    const desc = $('.desc', card);
+    const wasCollapsed = desc.classList.contains('collapsed');
+    desc.classList.add('collapsed');
+    const clipped = desc.scrollHeight > desc.clientHeight + 1;
+    desc.classList.toggle('collapsed', wasCollapsed);
+    $('.desc-toggle', card).hidden = !clipped;
+  }
+}
+
+function openPopover(card) {
+  closePopover();
+  const desc = $('.desc', card);
+  const pop = $('.desc-pop', card);
+  pop.style.top = `${desc.offsetTop - 9}px`; // 8px padding + 1px border: text lands on top of the clamped text
+  pop.hidden = false;
+  card.classList.add('popped');
+  $('.desc-toggle', card).setAttribute('aria-expanded', 'true');
+  $('.pop-close', pop).focus({ preventScroll: true });
+  poppedCard = card;
+}
+
+function closePopover() {
+  if (!poppedCard) return;
+  const card = poppedCard;
+  poppedCard = null;
+  $('.desc-pop', card).hidden = true;
+  card.classList.remove('popped');
+  const toggle = $('.desc-toggle', card);
+  toggle.setAttribute('aria-expanded', 'false');
+  if (card.contains(document.activeElement)) toggle.focus({ preventScroll: true });
+}
+
+document.addEventListener('click', (e) => {
+  if (poppedCard && !poppedCard.contains(e.target)) closePopover();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closePopover();
+});
+
 function render() {
+  poppedCard = null;
+  masonryObserver.disconnect();
   list.dataset.size = sizeSelect.value;
+  list.dataset.layout = layoutSelect.value;
+  $('#desc-default-picker').hidden = !isMasonry();
   list.replaceChildren(...sites.map(renderCard));
   $('#empty').hidden = sites.length > 0;
+  updateToggles();
+  if (isMasonry()) for (const card of list.children) masonryObserver.observe(card);
 }
+
+let resizeFrame = 0;
+let lastWidth = window.innerWidth;
+window.addEventListener('resize', () => {
+  // Height-only resizes happen when a phone's address bar slides away mid-scroll; ignore them.
+  if (window.innerWidth === lastWidth) return;
+  lastWidth = window.innerWidth;
+  closePopover(); // its position was measured for the old width
+  cancelAnimationFrame(resizeFrame);
+  resizeFrame = requestAnimationFrame(updateToggles);
+});
 
 async function refresh() {
   sites = await api('GET', '/api/sites');
@@ -121,7 +222,20 @@ sizeSelect.addEventListener('change', () => {
   render();
 });
 
+descDefaultSelect.addEventListener('change', () => {
+  prefs.set('descDefault', descDefaultSelect.value);
+  descOverrides.clear(); // a new default applies to every card
+  render();
+});
+
+layoutSelect.addEventListener('change', () => {
+  prefs.set('layout', layoutSelect.value);
+  render();
+});
+
 async function init() {
+  if (prefs.get('descDefault') === 'expanded') descDefaultSelect.value = 'expanded';
+  if (prefs.get('layout') === 'masonry') layoutSelect.value = 'masonry';
   ({ thumbnailSizes: sizes } = await api('GET', '/api/config'));
   const names = Object.keys(sizes).sort((a, b) => sizes[a] - sizes[b]);
   sizeSelect.replaceChildren(

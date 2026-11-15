@@ -17,9 +17,23 @@
     </form>
     <div class="toolbar">
       <p id="status" role="status" aria-live="polite"></p>
-      <label class="size-picker">Thumbnail size
-        <select id="size"></select>
-      </label>
+      <div class="pickers">
+        <label class="size-picker">Layout
+          <select id="layout">
+            <option value="grid">Grid</option>
+            <option value="masonry">Masonry</option>
+          </select>
+        </label>
+        <label class="size-picker">Thumbnail size
+          <select id="size"></select>
+        </label>
+        <label class="size-picker" id="desc-default-picker">Descriptions
+          <select id="desc-default">
+            <option value="collapsed">Collapsed</option>
+            <option value="expanded">Expanded</option>
+          </select>
+        </label>
+      </div>
     </div>
   </header>
   <main>
@@ -37,6 +51,11 @@
         <span class="badge" hidden>Basic capture</span>
         <p class="site-name"></p>
         <p class="desc"></p>
+        <button type="button" class="desc-toggle" aria-expanded="false" hidden>Show more</button>
+        <div class="desc-pop" hidden>
+          <p class="desc-full"></p>
+          <button type="button" class="pop-close">Show less</button>
+        </div>
         <a class="url" target="_blank" rel="noopener noreferrer"></a>
         <div class="meta">
           <time class="when"></time>
