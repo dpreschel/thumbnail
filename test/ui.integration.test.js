@@ -139,6 +139,30 @@ describe('masonry layout', () => {
     await page.close();
   }, 30_000);
 
+  it('scales card text with the Text size picker and remembers it', async () => {
+    const page = await openApp();
+    const sizes = () => page.evaluate(() => ['.title', '.desc', '.url'].map((sel) => parseFloat(getComputedStyle(document.querySelector(sel)).fontSize)));
+    expect(await page.inputValue('#text-size')).toBe('medium');
+    const medium = await sizes();
+    expect(medium[1]).toBeCloseTo(15 * 0.92, 1); // 1px under the old 16px base
+
+    await page.selectOption('#text-size', 'small');
+    const small = await sizes();
+    await page.selectOption('#text-size', 'large');
+    const large = await sizes();
+    for (let i = 0; i < 3; i++) {
+      expect(small[i]).toBeLessThan(medium[i]);
+      expect(large[i]).toBeGreaterThan(medium[i]);
+    }
+    expect(await page.locator('h1').evaluate((h) => getComputedStyle(h).fontSize)).toBe('32px'); // header untouched
+
+    await page.reload();
+    await card(page, 'long.test').waitFor();
+    expect(await page.inputValue('#text-size')).toBe('large');
+    expect(await sizes()).toEqual(large);
+    await page.close();
+  }, 30_000);
+
   it('remembers the layout and the description default across reloads', async () => {
     const page = await openApp('masonry');
     await page.selectOption('#desc-default', 'expanded');
