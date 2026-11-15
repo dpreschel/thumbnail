@@ -29,8 +29,7 @@ select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid 
          grid-template-columns: repeat(auto-fill, minmax(var(--col, 300px), 1fr)); }
 #sites[data-size="small"] { --col: 220px; }
 #sites[data-size="large"] { --col: min(100%, 520px); }
-/* Grid: every row as tall as the tallest card. Masonry: tiny rows; app.js sets each card's row span. */
-#sites[data-layout="grid"] { grid-auto-rows: 1fr; }
+/* Grid: each row is as tall as its tallest card (cards stretch). Masonry: tiny rows; app.js sets each card's row span. */
 #sites[data-layout="masonry"] { grid-auto-rows: 4px; row-gap: 0; align-items: start; }
 .card { position: relative; background: var(--card); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; }
 .card.popped { z-index: 2; }
@@ -47,8 +46,8 @@ select { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid 
 .title { font-size: 1.05rem; margin: 0; }
 .site-name:empty { display: none; }
 .site-name, .muted, .when { color: var(--muted); font-size: .85rem; margin: 0; }
-.desc { margin: 4px 0; font-size: .92rem; }
-.desc.collapsed { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.desc { --desc-lines: 4; margin: 4px 0; font-size: .92rem; } /* lines shown when collapsed */
+.desc.collapsed { display: -webkit-box; -webkit-line-clamp: var(--desc-lines); -webkit-box-orient: vertical; overflow: hidden; }
 .desc-toggle, .pop-close { align-self: flex-start; margin: -2px 0 2px; padding: 0; background: none; color: var(--accent); font-size: .85rem; }
 .desc-toggle:hover, .pop-close:hover { text-decoration: underline; }
 /* Left/top offsets + padding + border line the pop-over text up exactly with the clamped text under it. */

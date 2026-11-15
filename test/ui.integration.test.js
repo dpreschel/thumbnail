@@ -56,17 +56,23 @@ async function openApp(layout) {
 }
 
 describe('grid layout', () => {
-  it('keeps every card the same height and shows the full description in a pop-over', async () => {
+  it('matches card heights within each row and shows the full description in a pop-over', async () => {
     const page = await openApp();
     expect(await page.inputValue('#layout')).toBe('grid');
     expect(await page.locator('#desc-default-picker').isVisible()).toBe(false);
 
-    const heights = await page.locator('.card').evaluateAll((cs) => cs.map((c) => c.offsetHeight));
-    expect(new Set(heights).size).toBe(1);
+    // Row 1 (long, short, short2) shares one height; row 2 (short3) is only as tall as itself.
+    const cards = await page.locator('.card').evaluateAll((cs) => cs.map((c) => ({ top: c.offsetTop, h: c.offsetHeight })));
+    const row1 = cards.filter((c) => c.top === cards[0].top);
+    expect(row1).toHaveLength(3);
+    expect(new Set(row1.map((c) => c.h)).size).toBe(1);
+    expect(cards[3].h).toBeLessThan(row1[0].h);
 
     const long = card(page, 'long.test');
     const short = card(page, 'short.test');
     expect(await short.locator('.desc-toggle').isVisible()).toBe(false);
+    const lines = await long.locator('.desc').evaluate((d) => Math.round(d.clientHeight / parseFloat(getComputedStyle(d).lineHeight)));
+    expect(lines).toBe(4);
     const toggle = long.locator('.desc-toggle');
     const pop = long.locator('.desc-pop');
     const before = await box(long);
