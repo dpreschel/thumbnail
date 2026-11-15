@@ -9,6 +9,12 @@ Enter a website and the app captures:
 
 Records live in `data/sites.json` and images in `data/thumbnails/`. There's no database.
 
+Display options in the toolbar are remembered per browser:
+
+- **Layout:** Grid (each row as tall as its tallest card; long descriptions open in a pop-over) or Masonry (cards sized to their content; descriptions expand in place, with a Collapsed/Expanded default)
+- **Thumbnail size:** which stored size to show
+- **Text size:** Small / Medium / Large for card text
+
 ## Running it on a Mac
 
 > **New Mac or first time?** Follow [docs/MAC_SETUP.md](docs/MAC_SETUP.md). It covers Homebrew, cloning, Docker runtimes, Claude Code and troubleshooting.

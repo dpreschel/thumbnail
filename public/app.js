@@ -9,6 +9,7 @@ const tpl = $('#card-tpl');
 const sizeSelect = $('#size');
 const descDefaultSelect = $('#desc-default');
 const layoutSelect = $('#layout');
+const textSizeSelect = $('#text-size');
 
 let sites = [];
 let sizes = {}; // { small: 320, ... } from the server
@@ -173,6 +174,7 @@ function render() {
   masonryObserver.disconnect();
   list.dataset.size = sizeSelect.value;
   list.dataset.layout = layoutSelect.value;
+  list.dataset.text = textSizeSelect.value;
   $('#desc-default-picker').hidden = !isMasonry();
   list.replaceChildren(...sites.map(renderCard));
   $('#empty').hidden = sites.length > 0;
@@ -228,6 +230,11 @@ descDefaultSelect.addEventListener('change', () => {
   render();
 });
 
+textSizeSelect.addEventListener('change', () => {
+  prefs.set('textSize', textSizeSelect.value);
+  render(); // re-measures which descriptions are clipped at the new size
+});
+
 layoutSelect.addEventListener('change', () => {
   prefs.set('layout', layoutSelect.value);
   render();
@@ -236,6 +243,7 @@ layoutSelect.addEventListener('change', () => {
 async function init() {
   if (prefs.get('descDefault') === 'expanded') descDefaultSelect.value = 'expanded';
   if (prefs.get('layout') === 'masonry') layoutSelect.value = 'masonry';
+  if (['small', 'large'].includes(prefs.get('textSize'))) textSizeSelect.value = prefs.get('textSize');
   ({ thumbnailSizes: sizes } = await api('GET', '/api/config'));
   const names = Object.keys(sizes).sort((a, b) => sizes[a] - sizes[b]);
   sizeSelect.replaceChildren(

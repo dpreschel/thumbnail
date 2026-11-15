@@ -56,17 +56,23 @@ async function openApp(layout) {
 }
 
 describe('grid layout', () => {
-  it('keeps every card the same height and shows the full description in a pop-over', async () => {
+  it('matches card heights within each row and shows the full description in a pop-over', async () => {
     const page = await openApp();
     expect(await page.inputValue('#layout')).toBe('grid');
     expect(await page.locator('#desc-default-picker').isVisible()).toBe(false);
 
-    const heights = await page.locator('.card').evaluateAll((cs) => cs.map((c) => c.offsetHeight));
-    expect(new Set(heights).size).toBe(1);
+    // Row 1 (long, short, short2) shares one height; row 2 (short3) is only as tall as itself.
+    const cards = await page.locator('.card').evaluateAll((cs) => cs.map((c) => ({ top: c.offsetTop, h: c.offsetHeight })));
+    const row1 = cards.filter((c) => c.top === cards[0].top);
+    expect(row1).toHaveLength(3);
+    expect(new Set(row1.map((c) => c.h)).size).toBe(1);
+    expect(cards[3].h).toBeLessThan(row1[0].h);
 
     const long = card(page, 'long.test');
     const short = card(page, 'short.test');
     expect(await short.locator('.desc-toggle').isVisible()).toBe(false);
+    const lines = await long.locator('.desc').evaluate((d) => Math.round(d.clientHeight / parseFloat(getComputedStyle(d).lineHeight)));
+    expect(lines).toBe(4);
     const toggle = long.locator('.desc-toggle');
     const pop = long.locator('.desc-pop');
     const before = await box(long);
@@ -130,6 +136,30 @@ describe('masonry layout', () => {
       const overlap = a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
       expect(overlap).toBe(false);
     }
+    await page.close();
+  }, 30_000);
+
+  it('scales card text with the Text size picker and remembers it', async () => {
+    const page = await openApp();
+    const sizes = () => page.evaluate(() => ['.title', '.desc', '.url'].map((sel) => parseFloat(getComputedStyle(document.querySelector(sel)).fontSize)));
+    expect(await page.inputValue('#text-size')).toBe('medium');
+    const medium = await sizes();
+    expect(medium[1]).toBeCloseTo(15 * 0.92, 1); // 1px under the old 16px base
+
+    await page.selectOption('#text-size', 'small');
+    const small = await sizes();
+    await page.selectOption('#text-size', 'large');
+    const large = await sizes();
+    for (let i = 0; i < 3; i++) {
+      expect(small[i]).toBeLessThan(medium[i]);
+      expect(large[i]).toBeGreaterThan(medium[i]);
+    }
+    expect(await page.locator('h1').evaluate((h) => getComputedStyle(h).fontSize)).toBe('32px'); // header untouched
+
+    await page.reload();
+    await card(page, 'long.test').waitFor();
+    expect(await page.inputValue('#text-size')).toBe('large');
+    expect(await sizes()).toEqual(large);
     await page.close();
   }, 30_000);
 
