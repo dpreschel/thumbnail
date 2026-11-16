@@ -60,11 +60,24 @@ export function createCapturer({ allowPrivateHosts = false, dismiss = true, laun
       // network to settle before attempting dismissal.
       await page.waitForLoadState('networkidle', { timeout: SETTLE_TIMEOUT_MS }).catch(() => {});
 
-      // Layers 2 & 3: click dismiss/reject buttons and inject hide-CSS.
-      if (dismiss) await dismissConsent(page);
-
+      // Read metadata BEFORE touching consent banners, so a dismissal click can
+      // never change which page we describe.
       const finalUrl = page.url();
       const html = await page.content();
+
+      // Layers 2 & 3: click dismiss/reject buttons and inject hide-CSS.
+      if (dismiss) {
+        await dismissConsent(page);
+        // Some CMPs reload the page after a choice; let that settle.
+        await page.waitForLoadState('domcontentloaded', { timeout: SETTLE_TIMEOUT_MS }).catch(() => {});
+        if (page.url() !== finalUrl) {
+          // Safety net: a click navigated away. Go back and only hide banners.
+          await page.goto(finalUrl, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
+          await page.waitForLoadState('networkidle', { timeout: SETTLE_TIMEOUT_MS }).catch(() => {});
+          await dismissConsent(page, { click: false });
+        }
+      }
+
       const screenshot = await page.screenshot({ type: 'png' }); // lossless; resized to JPEG later
 
       return {
